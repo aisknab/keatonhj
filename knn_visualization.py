@@ -6,8 +6,11 @@ from sklearn.cluster import KMeans
 from bokeh.plotting import figure, output_file, show
 from bokeh.models import ColumnDataSource, HoverTool, CustomJS, Div
 from bokeh.layouts import column
-from bokeh.palettes import Category10
 from bokeh.transform import factor_cmap
+from bokeh.io import curdoc
+
+# Set dark theme for the document
+curdoc().theme = "dark_minimal"
 
 # Generate a dummy e-commerce product feed
 categories = {
@@ -52,16 +55,27 @@ source = ColumnDataSource(product_df)
 
 # Create plot
 p = figure(title="KNN Visualization of Products", tools="pan,wheel_zoom,reset,tap,hover", width=800, height=600)
-palette = Category10[n_clusters]
+palette = ['#ffa500', '#ff7f00', '#ffb347', '#ff8c00', '#ffd280']
 p.scatter('x', 'y', source=source,
           color=factor_cmap('cluster', palette=palette, factors=[str(i) for i in range(n_clusters)]),
           size=10)
+
+# Dark theme overrides
+p.background_fill_color = "#222"
+p.border_fill_color = "#222"
+p.axis.axis_label_text_color = "#ffa500"
+p.axis.major_label_text_color = "#ffa500"
+p.axis.major_tick_line_color = "#ffa500"
+p.axis.minor_tick_line_color = "#ffa500"
+p.axis.axis_line_color = "#ffa500"
+p.outline_line_color = "#ffa500"
 
 hover = p.select_one(HoverTool)
 hover.tooltips = [("Product", "@detail")]
 
 # Display details on click
-info_div = Div(width=400, height=100)
+info_div = Div(width=400, height=100,
+               styles={'background-color': '#222', 'color': '#ffa500', 'font-size': '16px'})
 callback = CustomJS(args=dict(source=source, div=info_div), code="""
     const index = cb_obj.indices[0];
     if (index != null) {
