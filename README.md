@@ -10,11 +10,14 @@ You can click the Preview link to take a look at your changes.
 
 ## KNN product visualization
 
-Generate an interactive visualization of a dummy e-commerce product feed:
+Generate an interactive 3D visualization of a synthetic e-commerce product feed:
 
 ```bash
 pip install -r requirements.txt
 python3 knn_visualization.py
 ```
 
-This creates `product_knn.html` where each point represents a product. Click a point to see its category, subcategory, and price. Colors indicate clusters of similar items.
+This creates `product_knn.html` where each point represents a product.
+Hover over points to see the category, subcategory, brand, condition,
+price, and rating. You can rotate the point cloud in the browser.
+Colors indicate clusters of similar items.
