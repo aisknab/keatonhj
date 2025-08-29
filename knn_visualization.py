@@ -9,7 +9,6 @@ from sklearn.manifold import TSNE
 from sklearn.cluster import KMeans
 from sklearn.neighbors import NearestNeighbors
 import plotly.express as px
-import plotly.graph_objects as go
 
 
 # ---------------------------------------------------------------------------
@@ -137,24 +136,6 @@ fig.update_traces(
     marker=dict(size=5, line=dict(width=0.5, color="white"))
 )
 
-# Draw lines between neighboring points
-seen_pairs = set()
-for idx, neighbors in enumerate(neighbor_indices):
-    for nb in neighbors[1:]:  # skip the point itself
-        pair = tuple(sorted((idx, nb)))
-        if pair in seen_pairs:
-            continue
-        seen_pairs.add(pair)
-        fig.add_trace(
-            go.Scatter3d(
-                x=[embedded[pair[0], 0], embedded[pair[1], 0]],
-                y=[embedded[pair[0], 1], embedded[pair[1], 1]],
-                z=[embedded[pair[0], 2], embedded[pair[1], 2]],
-                mode="lines",
-                line=dict(color="rgba(200,200,200,0.2)", width=1),
-                showlegend=False,
-            )
-        )
 
 # Dark mode polish
 fig.update_layout(
@@ -170,5 +151,52 @@ fig.update_layout(
     legend=dict(bgcolor="rgba(0,0,0,0)")
 )
 
-fig.write_html("product_knn.html", include_plotlyjs="cdn")
+# Add interactive neighbor highlighting via JavaScript
+post_script = f"""
+var neighborIndices = {neighbor_indices.tolist()};
+var MAX_DEPTH = 3;
+var currentLineTrace = null;
+var gd = document.getElementById('knn-viz');
+gd.on('plotly_click', function(event) {{
+  if (currentLineTrace !== null) {{
+    Plotly.deleteTraces(gd, currentLineTrace);
+    currentLineTrace = null;
+  }}
+  var start = event.points[0].pointIndex;
+  var visited = new Set([start]);
+  var queue = [{{index: start, depth: 0}}];
+  var xs = [], ys = [], zs = [];
+  while (queue.length > 0) {{
+    var node = queue.shift();
+    var idx = node.index;
+    var depth = node.depth;
+    if (depth >= MAX_DEPTH) continue;
+    var neigh = neighborIndices[idx];
+    for (var i = 1; i < neigh.length; i++) {{
+      var nb = neigh[i];
+      xs.push(gd.data[0].x[idx], gd.data[0].x[nb], null);
+      ys.push(gd.data[0].y[idx], gd.data[0].y[nb], null);
+      zs.push(gd.data[0].z[idx], gd.data[0].z[nb], null);
+      if (!visited.has(nb)) {{
+        visited.add(nb);
+        queue.push({{index: nb, depth: depth + 1}});
+      }}
+    }}
+  }}
+  if (xs.length > 0) {{
+    Plotly.addTraces(gd, {{
+      type: 'scatter3d',
+      mode: 'lines',
+      x: xs,
+      y: ys,
+      z: zs,
+      line: {{color: 'rgba(200,200,200,0.4)', width: 2}},
+      showlegend: false
+    }});
+    currentLineTrace = gd.data.length - 1;
+  }}
+}});
+"""
+
+fig.write_html("product_knn.html", include_plotlyjs="cdn", post_script=post_script, div_id="knn-viz")
 
