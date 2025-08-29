@@ -113,11 +113,28 @@ fig = px.scatter_3d(
         "price": True,
         "rating": True,
     },
-    color_discrete_sequence=px.colors.qualitative.Bold,
+    # Bright palette that pops against a dark background
+    color_discrete_sequence=px.colors.qualitative.Vivid,
 )
 
-fig.update_traces(marker=dict(size=4))
-fig.update_layout(title="3D KNN Visualization of Products")
+# Make markers easier to see on a dark canvas
+fig.update_traces(
+    marker=dict(size=5, line=dict(width=0.5, color="white"))
+)
+
+# Dark mode polish
+fig.update_layout(
+    title="3D KNN Visualization of Products",
+    template="plotly_dark",
+    paper_bgcolor="#000",
+    scene=dict(
+        bgcolor="#111",
+        xaxis=dict(showgrid=False, zeroline=False),
+        yaxis=dict(showgrid=False, zeroline=False),
+        zaxis=dict(showgrid=False, zeroline=False),
+    ),
+    legend=dict(bgcolor="rgba(0,0,0,0)")
+)
 
 fig.write_html("product_knn.html", include_plotlyjs="cdn")
 
