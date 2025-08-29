@@ -1,7 +1,7 @@
 - 👋 Hi, I’m @aisknab
 - 👀 I’m interested in tech, nintendo, coffee, cocktails
 - 🌱 I’m currently learning digital advertising monk status
-- 💞️ I’m looking to collaborate on nothing because I can't code. yet.
+- 💞️ I’m looking to collaborate on privacy and ai related niche solutions.
 
 <!---
 keatonhj/keatonhj is a ✨ special ✨ repository because its `README.md` (this file) appears on your GitHub profile.
