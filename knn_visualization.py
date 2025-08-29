@@ -1,101 +1,123 @@
+"""Generate a 3D KNN visualization of a synthetic e-commerce feed."""
+
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.manifold import TSNE
 from sklearn.cluster import KMeans
-from bokeh.plotting import figure, output_file, show
-from bokeh.models import ColumnDataSource, HoverTool, CustomJS, Div
-from bokeh.layouts import column
-from bokeh.transform import factor_cmap
-from bokeh.io import curdoc
+import plotly.express as px
 
-# Set dark theme for the document
-curdoc().theme = "dark_minimal"
 
-# Generate a dummy e-commerce product feed
+# ---------------------------------------------------------------------------
+# Generate a synthetic e-commerce product feed with realistic fields
+# ---------------------------------------------------------------------------
+
 categories = {
-    'mens clothing': ['shirts', 'shoes', 'jackets'],
-    'womens clothing': ['dresses', 'shoes', 'bags'],
-    'electronics': ['phones', 'laptops', 'headphones']
+    "mens clothing": ["shirts", "shoes", "jackets", "pants"],
+    "womens clothing": ["dresses", "shoes", "bags", "tops"],
+    "electronics": ["phones", "laptops", "headphones", "cameras"],
+    "home & kitchen": ["cookware", "furniture", "bedding", "decor"],
+    "sports": ["fitness", "outdoor", "team sports", "cycling"],
 }
+
+brands = ["Acme", "Globex", "Umbrella", "Soylent", "Initech"]
+conditions = ["new", "used", "refurbished"]
 
 np.random.seed(42)
 products = []
-for cat, subs in categories.items():
+
+for category, subs in categories.items():
     for sub in subs:
-        for _ in range(5):  # five products per subcategory
-            price = np.random.randint(20, 200)
-            products.append((cat, sub, price))
+        for _ in range(20):  # twenty products per subcategory (~400 total)
+            price = np.round(np.random.uniform(5, 500), 2)
+            brand = np.random.choice(brands)
+            condition = np.random.choice(conditions)
+            rating = np.round(np.random.uniform(1, 5), 1)
+            title = f"{brand} {sub} {np.random.randint(1000, 9999)}"
+            products.append(
+                (
+                    title,
+                    category,
+                    sub,
+                    brand,
+                    condition,
+                    price,
+                    rating,
+                )
+            )
 
-# Create DataFrame
-product_df = pd.DataFrame(products, columns=['category', 'subcategory', 'price'])
-
-# Feature engineering
-encoder = OneHotEncoder()
-encoded = encoder.fit_transform(product_df[['category', 'subcategory']]).toarray()
-prices = product_df[['price']].values
-features = np.hstack([encoded, prices / prices.max()])  # normalize price
-
-# Dimensionality reduction for visualization
-embedded = TSNE(n_components=2, random_state=42, perplexity=5).fit_transform(features)
-
-# Clustering for color coding
-n_clusters = 5
-clusters = KMeans(n_clusters=n_clusters, random_state=42).fit_predict(features)
-
-# Prepare data for Bokeh
-product_df['x'] = embedded[:, 0]
-product_df['y'] = embedded[:, 1]
-product_df['cluster'] = clusters.astype(str)
-product_df['detail'] = (
-    product_df['category'] + ' > ' + product_df['subcategory'] + '; price: $' + product_df['price'].astype(str)
+product_df = pd.DataFrame(
+    products,
+    columns=["title", "category", "subcategory", "brand", "condition", "price", "rating"],
 )
 
-source = ColumnDataSource(product_df)
 
-# Create plot
-p = figure(title="KNN Visualization of Products", tools="pan,wheel_zoom,reset,tap,hover", width=1200, height=800)
-palette = ['#ffa500', '#ff7f00', '#ffb347', '#ff8c00', '#ffd280']
-p.scatter('x', 'y', source=source,
-          color=factor_cmap('cluster', palette=palette, factors=[str(i) for i in range(n_clusters)]),
-          size=18)
+# ---------------------------------------------------------------------------
+# Feature engineering
+# ---------------------------------------------------------------------------
 
-# Dark theme overrides
-p.background_fill_color = "#222"
-p.border_fill_color = "#222"
-p.axis.axis_label_text_color = "#ffa500"
-p.axis.axis_label_text_font_size = '14pt'
-p.axis.major_label_text_color = "#ffa500"
-p.axis.major_label_text_font_size = '12pt'
-p.axis.major_tick_line_color = "#ffa500"
-p.axis.minor_tick_line_color = "#ffa500"
-p.axis.axis_line_color = "#ffa500"
-p.outline_line_color = "#ffa500"
-p.title.text_font_size = '20pt'
+encoder = OneHotEncoder()
+encoded = encoder.fit_transform(
+    product_df[["category", "subcategory", "brand", "condition"]]
+).toarray()
 
-# Grid styling
-p.xgrid.grid_line_color = '#444'
-p.ygrid.grid_line_color = '#444'
-p.xgrid.minor_grid_line_color = None
-p.ygrid.minor_grid_line_color = None
+price_scaled = product_df[["price"]].values / product_df["price"].max()
+rating_scaled = product_df[["rating"]].values / 5.0
 
-hover = p.select_one(HoverTool)
-hover.tooltips = [("Product", "@detail")]
+features = np.hstack([encoded, price_scaled, rating_scaled])
 
-# Display details on click
-info_div = Div(width=600, height=150,
-               styles={'background-color': '#222', 'color': '#ffa500', 'font-size': '18px'})
-callback = CustomJS(args=dict(source=source, div=info_div), code="""
-    const index = cb_obj.indices[0];
-    if (index != null) {
-        const data = source.data;
-        const desc = data['detail'][index];
-        div.text = desc;
-    }
-""")
 
-p.js_on_event('tap', callback)
-layout = column(p, info_div)
+# ---------------------------------------------------------------------------
+# Dimensionality reduction and clustering
+# ---------------------------------------------------------------------------
 
-output_file("product_knn.html")
-show(layout)
+embedded = TSNE(n_components=3, random_state=42, perplexity=30).fit_transform(features)
+
+n_clusters = 8
+clusters = KMeans(n_clusters=n_clusters, random_state=42).fit_predict(features)
+
+product_df["x"], product_df["y"], product_df["z"] = embedded.T
+product_df["cluster"] = clusters.astype(str)
+
+product_df["detail"] = (
+    product_df["category"]
+    + " > "
+    + product_df["subcategory"]
+    + "; Brand: "
+    + product_df["brand"]
+    + "; Condition: "
+    + product_df["condition"]
+    + "; Price: $"
+    + product_df["price"].astype(str)
+    + "; Rating: "
+    + product_df["rating"].astype(str)
+)
+
+
+# ---------------------------------------------------------------------------
+# 3D visualization with Plotly
+# ---------------------------------------------------------------------------
+
+fig = px.scatter_3d(
+    product_df,
+    x="x",
+    y="y",
+    z="z",
+    color="cluster",
+    hover_name="title",
+    hover_data={
+        "category": True,
+        "subcategory": True,
+        "brand": True,
+        "condition": True,
+        "price": True,
+        "rating": True,
+    },
+    color_discrete_sequence=px.colors.qualitative.Bold,
+)
+
+fig.update_traces(marker=dict(size=4))
+fig.update_layout(title="3D KNN Visualization of Products")
+
+fig.write_html("product_knn.html", include_plotlyjs="cdn")
+
