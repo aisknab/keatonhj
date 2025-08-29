@@ -54,28 +54,37 @@ product_df['detail'] = (
 source = ColumnDataSource(product_df)
 
 # Create plot
-p = figure(title="KNN Visualization of Products", tools="pan,wheel_zoom,reset,tap,hover", width=800, height=600)
+p = figure(title="KNN Visualization of Products", tools="pan,wheel_zoom,reset,tap,hover", width=1200, height=800)
 palette = ['#ffa500', '#ff7f00', '#ffb347', '#ff8c00', '#ffd280']
 p.scatter('x', 'y', source=source,
           color=factor_cmap('cluster', palette=palette, factors=[str(i) for i in range(n_clusters)]),
-          size=10)
+          size=18)
 
 # Dark theme overrides
 p.background_fill_color = "#222"
 p.border_fill_color = "#222"
 p.axis.axis_label_text_color = "#ffa500"
+p.axis.axis_label_text_font_size = '14pt'
 p.axis.major_label_text_color = "#ffa500"
+p.axis.major_label_text_font_size = '12pt'
 p.axis.major_tick_line_color = "#ffa500"
 p.axis.minor_tick_line_color = "#ffa500"
 p.axis.axis_line_color = "#ffa500"
 p.outline_line_color = "#ffa500"
+p.title.text_font_size = '20pt'
+
+# Grid styling
+p.xgrid.grid_line_color = '#444'
+p.ygrid.grid_line_color = '#444'
+p.xgrid.minor_grid_line_color = None
+p.ygrid.minor_grid_line_color = None
 
 hover = p.select_one(HoverTool)
 hover.tooltips = [("Product", "@detail")]
 
 # Display details on click
-info_div = Div(width=400, height=100,
-               styles={'background-color': '#222', 'color': '#ffa500', 'font-size': '16px'})
+info_div = Div(width=600, height=150,
+               styles={'background-color': '#222', 'color': '#ffa500', 'font-size': '18px'})
 callback = CustomJS(args=dict(source=source, div=info_div), code="""
     const index = cb_obj.indices[0];
     if (index != null) {
