@@ -1,11 +1,15 @@
 """Generate a 3D KNN visualization of a synthetic e-commerce feed."""
 
+import argparse
+
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.manifold import TSNE
 from sklearn.cluster import KMeans
+from sklearn.neighbors import NearestNeighbors
 import plotly.express as px
+import plotly.graph_objects as go
 
 
 # ---------------------------------------------------------------------------
@@ -73,6 +77,17 @@ features = np.hstack([encoded, price_scaled, rating_scaled])
 
 embedded = TSNE(n_components=3, random_state=42, perplexity=30).fit_transform(features)
 
+# Determine k-nearest neighbor pairs in the embedded space
+parser = argparse.ArgumentParser(description="KNN visualization options")
+parser.add_argument(
+    "--k", type=int, default=5, help="Number of nearest neighbors to connect"
+)
+args = parser.parse_args()
+k = args.k
+
+neighbors = NearestNeighbors(n_neighbors=k).fit(embedded)
+neighbor_indices = neighbors.kneighbors(embedded, return_distance=False)
+
 n_clusters = 8
 clusters = KMeans(n_clusters=n_clusters, random_state=42).fit_predict(features)
 
@@ -121,6 +136,25 @@ fig = px.scatter_3d(
 fig.update_traces(
     marker=dict(size=5, line=dict(width=0.5, color="white"))
 )
+
+# Draw lines between neighboring points
+seen_pairs = set()
+for idx, neighbors in enumerate(neighbor_indices):
+    for nb in neighbors[1:]:  # skip the point itself
+        pair = tuple(sorted((idx, nb)))
+        if pair in seen_pairs:
+            continue
+        seen_pairs.add(pair)
+        fig.add_trace(
+            go.Scatter3d(
+                x=[embedded[pair[0], 0], embedded[pair[1], 0]],
+                y=[embedded[pair[0], 1], embedded[pair[1], 1]],
+                z=[embedded[pair[0], 2], embedded[pair[1], 2]],
+                mode="lines",
+                line=dict(color="rgba(200,200,200,0.2)", width=1),
+                showlegend=False,
+            )
+        )
 
 # Dark mode polish
 fig.update_layout(
